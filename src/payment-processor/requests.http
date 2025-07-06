@@ -1,0 +1,75 @@
+@port = 5245
+@token = 123
+
+
+GET http://localhost:{{port}}/payments/service-health
+
+###
+
+GET http://localhost:{{port}}/admin/payments-summary?from=2025-01-01T01:01:01&to=2025-01-10T01:01:07
+X-Rinha-Token: {{token}}
+
+###
+
+GET http://localhost:{{port}}/admin/payments-summary?from=0&size=0
+X-Rinha-Token: {{token}}
+
+###
+
+POST http://localhost:{{port}}/payments
+Content-Type: application/json
+
+{
+    "correlationId": "{{$guid}}",
+    "amount": {{$randomInt 1 10000}}.{{$randomInt 0 99}},
+    "requestedAt" : "2025-01-01T01:01:06"
+}
+
+###
+
+GET http://localhost:{{port}}/payments/ec477ded-4ae0-4f12-9cb2-292251c25d8f
+
+###
+
+PUT http://localhost:{{port}}/admin/configurations/token
+X-Rinha-Token: 123
+Content-Type: application/json
+
+{
+    "token": "{{token}}"
+}
+
+###
+
+PUT http://localhost:{{port}}/admin/configurations/delay
+X-Rinha-Token: {{token}}
+Content-Type: application/json
+
+{
+    "delay": 0
+}
+
+###
+
+PUT http://localhost:{{port}}/admin/configurations/failure
+X-Rinha-Token: {{token}}
+Content-Type: application/json
+
+{
+    "failure": true
+}
+
+###
+
+PUT http://localhost:{{port}}/admin/configurations/fee
+X-Rinha-Token: {{token}}
+Content-Type: application/json
+
+{
+    "fee": 1.0
+}
+
+###
+
+POST http://localhost:{{port}}/admin/purge-payments
+X-Rinha-Token: {{token}}
