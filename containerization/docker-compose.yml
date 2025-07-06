@@ -1,9 +1,6 @@
 x-service-templates:
   payment-processor: &payment-processor
-    image: payment-processor:latest
-    build:
-      context: ../
-      dockerfile: Dockerfile
+    image: zanfranceschi/payment-processor:latest
     networks:
       - payment-processor
     deploy:
