@@ -153,7 +153,7 @@ app.MapGet("/admin/payments-summary", async (
     return Results.Ok(new PaymentsSummaryWireResponse(
         totalAmount,
         totalRequests,
-        totalRequests * transactionFee,
+        totalAmount * transactionFee,
         transactionFee));
 
 }).AddEndpointFilter<CustomTokenAuth>();
