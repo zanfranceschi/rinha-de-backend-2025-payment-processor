@@ -20,7 +20,8 @@
                 "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
             },
             "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development"
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "DB_CONNECTION_STRING": "Host=localhost;Port=54321;Database=rinha;Username=postgres;Password=postgres;Minimum Pool Size=15;Maximum Pool Size=20;Connection Pruning Interval=3"
             },
             "sourceFileMap": {
                 "/Views": "${workspaceFolder}/Views"
