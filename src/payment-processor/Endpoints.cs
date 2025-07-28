@@ -64,12 +64,18 @@ app.MapGet("/", async (HttpContext context) =>
 });
 
 app.MapGet("/payments/service-health", (
-ConfigurationHttpResponseFailure failure,
-    ConfigurationHttpResponseDelay delay)
-    => new ServicesAvailabilityWireResponse(
+    HttpContext context,
+    ConfigurationHttpResponseFailure failure,
+    ConfigurationHttpResponseDelay delay) =>
+{
+    if (failure.HttpResponseFailure == true) {
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+    }
+
+    return new ServicesAvailabilityWireResponse(
         failure.HttpResponseFailure,
-        delay.HttpResponseDelay))
-        .RequireRateLimiting("service-health");
+        delay.HttpResponseDelay);
+}).RequireRateLimiting("service-health");
 
 app.MapPost("/payments", async (
     ILogger<Endpoint> logger,
