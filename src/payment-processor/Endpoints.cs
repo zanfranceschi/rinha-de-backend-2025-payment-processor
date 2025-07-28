@@ -3,13 +3,10 @@ using System.Text.Json;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.OpenApi;
 using Npgsql;
-using Scalar.AspNetCore;
 
 var initialToken = Environment.GetEnvironmentVariable("INITIAL_TOKEN") ?? "123";
-var dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
-    ?? "Host=localhost;Port=5432;Database=rinha;Username=postgres;Password=postgres;Minimum Pool Size=15;Maximum Pool Size=20;Connection Pruning Interval=3";
+var dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") ?? throw new Exception("no DB_CONNECTION_STRING env set");
 var transactionFee = decimal.Parse(Environment.GetEnvironmentVariable("TRANSACTION_FEE") ?? "0.05");
 var rateLimitWindow = int.Parse(Environment.GetEnvironmentVariable("RATE_LIMIT_SECONDS") ?? "5");
 
@@ -25,6 +22,7 @@ builder.Services.AddSingleton(applicationToken);
 builder.Services.Configure<JsonOptions>(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
 });
 
 builder.Services.AddRateLimiter(options =>
@@ -44,18 +42,8 @@ builder.Services.AddRateLimiter(options =>
      };
 });
 
-builder.Services.AddOpenApi("v1", options =>
-{
-    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_0;
-});
 
 var app = builder.Build();
-
-// app.MapScalarApiReference();
-
-app.MapOpenApi();
-
-app.MapScalarApiReference();
 
 app.MapGet("/", async (HttpContext context) =>
 {
@@ -88,10 +76,10 @@ app.MapPost("/payments", async (
         cmd.CommandText = @"INSERT INTO payments (correlationId, amount, requested_at)
                             VALUES (@correlationId, @amount, @requested_at);";
         cmd.Parameters.AddWithValue("correlationId", paymentRequest.CorrelationId);
-        cmd.Parameters.AddWithValue("amount", paymentRequest.Amount);
+        cmd.Parameters.AddWithValue("amount", decimal.Round(paymentRequest.Amount, 2));
         cmd.Parameters.AddWithValue("requested_at", paymentRequest.RequestedAt);
         await cmd.ExecuteNonQueryAsync();
-        return Results.Ok(new { Message = $"payment processed successfully" });
+        return Results.Ok(new MessageWireResponse($"payment processed successfully"));
     }
     catch (PostgresException ex)
     {
@@ -99,18 +87,18 @@ app.MapPost("/payments", async (
         {
             var warning = $"Payment could not be processed. CorrelationId already exists: {paymentRequest.CorrelationId}. Error details: {ex}";
             logger.LogWarning(warning);
-            return Results.UnprocessableEntity(new { Message = warning });
+            return Results.UnprocessableEntity(new MessageWireResponse(warning));
         }
         else
         {
             logger.LogError(ex, "postgres exception");
-            return Results.InternalServerError(new { Message = ex.ToString() });
+            return Results.InternalServerError(new MessageWireResponse(ex.ToString()));
         }
     }
     catch (Exception ex)
     {
         logger.LogError(ex, "error");
-        return Results.InternalServerError(new { Message = ex.ToString() });
+        return Results.InternalServerError(new MessageWireResponse(ex.ToString()));
     }
 }).AddEndpointFilter<MaybeSimulateDelay>()
 .AddEndpointFilter<MaybeSimulateFailure>();
@@ -176,7 +164,7 @@ app.MapPut("/admin/configurations/delay", (
     ConfigurationHttpResponseDelay configurationHttpResponseDelay,
     ConfigurationDelaySetWireRequest request) =>
 {
-    var response = new ConfigurationSetResponse(
+    var response = new ConfigurationSetWireResponse<Int64>(
         "delay",
          configurationHttpResponseDelay.HttpResponseDelay,
          request.Delay);
@@ -188,7 +176,7 @@ app.MapPut("/admin/configurations/failure", (
     ConfigurationHttpResponseFailure configurationHttpResponseFailure,
     ConfigurationFailureSetWireRequest request) =>
 {
-    var response = new ConfigurationSetResponse(
+    var response = new ConfigurationSetWireResponse<bool>(
         "failure",
          configurationHttpResponseFailure.HttpResponseFailure,
          request.Failure);
@@ -203,7 +191,7 @@ app.MapPost("/admin/purge-payments", async (
     await using var cmd = dataSource.CreateCommand();
     cmd.CommandText = @"TRUNCATE TABLE payments RESTART IDENTITY;";
     await cmd.ExecuteNonQueryAsync();
-    return Results.Ok(new { message = "All payments purged." });
+    return Results.Ok(new MessageWireResponse("All payments purged."));
 
 }).AddEndpointFilter<CustomTokenAuth>();
 

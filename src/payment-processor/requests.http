@@ -1,5 +1,5 @@
 @port = 8001
-# @port = 5245
+#@port = 5245
 @token = 123
 
 
@@ -25,6 +25,18 @@ Content-Type: application/json
     "amount": {{$randomInt 1 10000}}.{{$randomInt 0 99}},
     "requestedAt" : "2025-01-01T01:01:06"
 }
+
+###
+
+POST http://localhost:{{port}}/payments
+Content-Type: application/json
+
+{
+    "correlationId": "{{$guid}}",
+    "amount": 77.8299999999999982946974341757595539093017578125,
+    "requestedAt" : "2025-01-01T01:01:06"
+}
+
 
 ###
 
@@ -57,17 +69,7 @@ X-Rinha-Token: {{token}}
 Content-Type: application/json
 
 {
-    "failure": true
-}
-
-###
-
-PUT http://localhost:{{port}}/admin/configurations/fee
-X-Rinha-Token: {{token}}
-Content-Type: application/json
-
-{
-    "fee": 1.0
+    "failure": false
 }
 
 ###

@@ -4,6 +4,11 @@ x-service-templates:
     networks:
       - payment-processor
     deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 2s
+        max_attempts: 10
+        window: 5s
       resources:
         limits:
           cpus: "1.5"
@@ -20,6 +25,11 @@ x-service-templates:
       - POSTGRES_USER=postgres
       - POSTGRES_DB=rinha
     deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 2s
+        max_attempts: 10
+        window: 5s
       resources:
         limits:
           cpus: "1.5"
@@ -34,7 +44,9 @@ services:
       - TRANSACTION_FEE=0.05
       - RATE_LIMIT_SECONDS=5
       - INITIAL_TOKEN=123
-      - DB_CONNECTION_STRING=Host=payment-processor-default-db;Port=5432;Database=rinha;Username=postgres;Password=postgres;Minimum Pool Size=15;Maximum Pool Size=20;Connection Pruning Interval=3
+      - DB_CONNECTION_STRING=Host=/var/run/postgresql;Port=5432;Database=rinha;Username=postgres;Password=postgres;Minimum Pool Size=15;Maximum Pool Size=20;Connection Pruning Interval=3
+    volumes:
+      - postgres-socket-01:/var/run/postgresql
     ports:
       - 8001:8080
     depends_on:
@@ -44,6 +56,8 @@ services:
     <<: *payment-processor-db
     container_name: payment-processor-default-db
     hostname: payment-processor-default-db
+    volumes:
+      - postgres-socket-01:/var/run/postgresql
     ports:
       - 54321:5432
 
@@ -55,7 +69,9 @@ services:
       - TRANSACTION_FEE=0.15
       - RATE_LIMIT_SECONDS=5
       - INITIAL_TOKEN=123
-      - DB_CONNECTION_STRING=Host=payment-processor-fallback-db;Port=5432;Database=rinha;Username=postgres;Password=postgres;Minimum Pool Size=15;Maximum Pool Size=20;Connection Pruning Interval=3
+      - DB_CONNECTION_STRING=Host=/var/run/postgresql;Port=5432;Database=rinha;Username=postgres;Password=postgres;Minimum Pool Size=15;Maximum Pool Size=20;Connection Pruning Interval=3
+    volumes:
+      - postgres-socket-02:/var/run/postgresql
     ports:
       - 8002:8080
     depends_on:
@@ -65,6 +81,8 @@ services:
     <<: *payment-processor-db
     container_name: payment-processor-fallback-db
     hostname: payment-processor-fallback-db
+    volumes:
+      - postgres-socket-02:/var/run/postgresql
     ports:
       - 54322:5432
 
@@ -72,3 +90,7 @@ networks:
   payment-processor:
     name: payment-processor
     driver: bridge
+
+volumes:
+  postgres-socket-01:
+  postgres-socket-02:
