@@ -1,6 +1,6 @@
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
 
-RUN apk add clang build-base zlib-dev
+RUN apk add clang build-base zlib-dev libc6-compat
 
 WORKDIR /app
 COPY . ./
