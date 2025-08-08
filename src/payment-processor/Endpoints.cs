@@ -27,12 +27,18 @@ builder.Services.Configure<JsonOptions>(options =>
 
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowLimiter("service-health", opt =>
+    options.AddFixedWindowLimiter("service-health", options =>
     {
-        opt.PermitLimit = 1;
-        opt.Window = TimeSpan.FromSeconds(rateLimitWindow);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 2;
+        options.PermitLimit = 1;
+        options.Window = TimeSpan.FromSeconds(rateLimitWindow);
+        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        options.QueueLimit = 2;
+    });
+    options.AddConcurrencyLimiter("concurrency", options =>
+    {
+        options.PermitLimit = 800;
+        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        options.QueueLimit = 500;
     });
     options.OnRejected = async (context, cancellationToken) =>
      {
@@ -94,7 +100,8 @@ app.MapPost("/payments", async (
         logger.LogError(ex, "error");
         return Results.InternalServerError(new MessageWireResponse(ex.ToString()));
     }
-}).AddEndpointFilter<MaybeSimulateDelay>()
+}).RequireRateLimiting("concurrency")
+.AddEndpointFilter<MaybeSimulateDelay>()
 .AddEndpointFilter<MaybeSimulateFailure>();
 
 app.MapGet("/payments/{id}", async (
@@ -113,7 +120,7 @@ app.MapGet("/payments/{id}", async (
         return Results.Ok(new PaymentWireResponse(id, amount, requestedAt));
     }
     return Results.NotFound();
-});
+}).RequireRateLimiting("concurrency");
 
 app.MapGet("/admin/payments-summary", async (
     NpgsqlDataSource dataSource,

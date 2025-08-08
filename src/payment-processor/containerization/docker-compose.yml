@@ -1,7 +1,7 @@
 
 services:
   payment-processor:
-    image: payment-processor:latest
+    image: payment-processor:20250807222453
     container_name: payment-processor-default
     hostname: payment-processor-default
     build:
